@@ -216,8 +216,8 @@ def process_directory(input_dir, output_dir=None):
 # =============================================================================
 
 # Option 1: Convert single file
-input_file = r"C:\Users\annam\Dropbox\escriptorium-to-transkribus-pagexml\prepisy-z-escriptoria\20230620_151509.xml"  # Change to your path
-output_file = r"C:\Users\annam\Dropbox\escriptorium-to-transkribus-pagexml\prepisy-z-escriptoria\20230620_151509_transkribus.xml"
+input_file = r"C:\path\to\your\file.xml"  # Change to your path
+output_file = r"C:\path\to\output\file_transkribus.xml"
 
 # Option 2: Convert entire folder
 input_folder = r"C:\path\to\xml\files"  # Change to your path
