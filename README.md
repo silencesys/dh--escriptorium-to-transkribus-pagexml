@@ -42,68 +42,65 @@ This script converts PAGE XML files by making the following changes:
 
 ## Installation
 
-No installation needed! Just Python 3.6+
+No installation needed — this is a small Python script. Requires Python 3.6+.
 
 ```bash
 # Clone the repository
 git clone https://github.com/Aidee1996/escriptorium-to-transkribus-pagexml.git
 cd escriptorium-to-transkribus-pagexml
 
-# Run the script
-python convert_pagexml.py
+# Show help
+python convert_pagexml.py -h
 ```
 
-## Usage
+## Usage (CLI)
 
-### Simple Usage (Recommended)
+The script is now a command-line tool. Use either `-f/--file` to convert a single PAGE XML file or
+`-d/--directory` to convert all `.xml` files in a folder. Use `-o/--output` to control output paths.
 
-1. Open `convert_pagexml.py` in a text editor
-2. Find these lines near the bottom:
+Flags
+- `-f, --file` — Path to a single PAGE XML file to convert.
+- `-d, --directory` — Path to a directory containing PAGE XML files to convert.
+- `-o, --output` — Optional output file or directory. Behavior:
+	- For single-file conversion:
+		- `-o` (no value) or `-o _auto` — auto-generate an output file by appending `_transkribus` to the input filename (same folder).
+		- `-o /path/to/outdir/` or `-o outdir` — treat as output directory (created if needed) and write `<stem>_transkribus.xml` inside it.
+		- `-o /path/to/output.xml` — treat as explicit output file path.
+	- For directory conversion:
+		- `-o` (no value) — create a `transkribus_converted` folder next to the input directory and write outputs there.
+		- `-o /path/to/output_dir/` — use that output directory (created if needed).
+- `-v, --verbose` — Print extra information (for example, when the output directory is created).
 
-```python
-# Option 1: Convert single file
-input_file = r"C:\path\to\your\file.xml"
-output_file = r"C:\path\to\output\file.xml"
+Notes about `-o` heuristics
+- If `-o` is a path that does not exist and has no file extension, the script treats it as a directory and creates it.
+- If you want to force an output file without extension, provide a trailing slash to make your intention explicit.
 
-# Option 2: Convert entire folder
-input_folder = r"C:\path\to\xml\files"
-output_folder = r"C:\path\to\output\folder"
-```
+Examples
 
-3. Change the paths to your files/folders
-4. Run: `python convert_pagexml.py`
-
-### Programmatic Usage
-
-```python
-from convert_pagexml import convert_page_xml, process_directory
-
-# Convert single file
-convert_page_xml("input.xml", "output.xml")
-
-# Convert entire directory
-process_directory("input_folder", "output_folder")
-```
-
-## Examples
-
-### Single File Conversion
+Single file, auto-generate output (append `_transkribus`):
 ```bash
-$ python convert_pagexml.py
-Converting file: my_manuscript.xml
-Successfully converted: my_manuscript.xml → my_manuscript_transkribus.xml
-✅ File conversion completed!
+python convert_pagexml.py -f /path/to/input.xml
 ```
 
-### Batch Directory Conversion
+Single file, explicit output file:
 ```bash
-$ python convert_pagexml.py
-Converting folder: /path/to/manuscripts
-Successfully converted: page_001.xml → page_001_transkribus.xml
-Successfully converted: page_002.xml → page_002_transkribus.xml
-...
-Processed 50/50 files successfully
-✅ Folder conversion completed!
+python convert_pagexml.py -f /path/to/input.xml -o /path/to/output.xml
+```
+
+Single file, output into a directory (created if needed):
+```bash
+python convert_pagexml.py -f /path/to/input.xml -o /path/to/output_dir/
+```
+
+Batch convert a directory into a specific output folder:
+```bash
+python convert_pagexml.py -d /path/to/input_dir -o /path/to/output_dir/
+```
+
+For full help and all options, run:
+
+```bash
+python convert_pagexml.py -h
 ```
 
 ## Testing

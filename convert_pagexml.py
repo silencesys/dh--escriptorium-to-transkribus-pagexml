@@ -54,6 +54,7 @@ TECHNICAL CHANGES:
 
 import re
 import os
+import argparse
 from pathlib import Path
 
 
@@ -211,62 +212,160 @@ def process_directory(input_dir, output_dir=None):
     print(f"\nProcessed {success_count}/{len(xml_files)} files successfully")
 
 
-# =============================================================================
-# SIMPLE USAGE - Only change these paths:
-# =============================================================================
-
-# Option 1: Convert single file
-input_file = r"C:\Users\annam\Dropbox\escriptorium-to-transkribus-pagexml\prepisy-z-escriptoria\20230620_151509.xml"  # Change to your path
-output_file = r"C:\Users\annam\Dropbox\escriptorium-to-transkribus-pagexml\prepisy-z-escriptoria\20230620_151509_transkribus.xml"
-
-# Option 2: Convert entire folder
-input_folder = r"C:\path\to\xml\files"  # Change to your path
-output_folder = r"C:\path\to\output\folder"
-
-# =============================================================================
-
-
-def easy_convert():
-    """
-    Simple conversion function - just configure paths above and run!
-
-    This is a convenience wrapper that checks for files/folders and runs conversion.
-    For programmatic use, call convert_page_xml() or process_directory() directly.
-    """
-
+def welcome_message():
+    """Print a friendly welcome message and short usage examples."""
     print("=" * 70)
     print("PAGE XML Converter: eScriptorium → Transkribus")
-    print("⚠️  REGEX-BASED APPROACH - See script header for limitations")
+    print("Convert PAGE XML files exported from eScriptorium (regex-based).")
+    print("⚠️  REGEX-BASED TRANSFORMATIONS — see module docstring for limitations")
     print("=" * 70)
     print()
+    print("Usage examples:")
+    print("  Convert single file and auto-generate output (append _transkribus):")
+    print("    python convert_pagexml.py -f /path/to/input.xml -o")
+    print()
+    print("  Convert single file and write to a specific output file:")
+    print("    python convert_pagexml.py -f /path/to/input.xml -o /path/to/output.xml")
+    print()
+    print("  Convert a directory of XML files and write to a specific output directory:")
+    print("    python convert_pagexml.py -d /path/to/input_dir -o /path/to/output_dir/")
+    print()
+    print("Options:")
+    print("  -f, --file       Path to a single PAGE XML file")
+    print("  -d, --directory  Path to a directory containing PAGE XML files")
+    print("  -o, --output     Output file or directory. Use trailing slash or no extension to force directory creation.")
+    print("  -v, --verbose    Print extra information while running")
+    print()
+    print("For full help, run: python convert_pagexml.py -h")
+    print()
 
-    # Try to convert single file first
-    if os.path.exists(input_file):
-        print(f"Converting file: {input_file}")
-        if convert_page_xml(input_file, output_file):
-            print("✅ File conversion completed!")
+
+
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Convert PAGE XML from eScriptorium to Transkribus format (regex-based)."
+    )
+
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument("-f", "--file", dest="file", help="Path to a single PAGE XML file to convert")
+    group.add_argument("-d", "--directory", dest="directory", help="Path to a directory containing PAGE XML files to convert")
+
+    # -o/--o flag: if provided without value, auto-generate filename by appending _transkribus
+    # If provided with a value, treat that as an output file (for single file) or output directory (for directory)
+    parser.add_argument(
+        "-o",
+        "--output",
+        dest="output",
+        nargs="?",
+        const="_auto",
+        help=(
+            "Output file or directory. For single-file conversion: if omitted, no output file is written;"
+            " if provided without value, an output file is created by appending '_transkribus' to the filename;"
+            " if provided with a path, that path is used as the output file. For directory conversion:"
+            " if provided with a path, it's used as the output directory; if provided without value, a 'transkribus_converted'"
+            " folder is created next to the input directory."
+        ),
+    )
+
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+
+    # If no args supplied, show a friendly welcome message with examples
+    if not args.file and not args.directory:
+        welcome_message()
+        return
+
+    if args.file:
+        input_path = Path(args.file)
+        if not input_path.exists():
+            print(f"Error: input file does not exist: {args.file}")
+            return
+
+        # Determine output handling
+        if args.output is None:
+            # No -o provided: use existing convert function behavior (it will auto-generate and write)
+            # We call convert_page_xml with no output_file to let it auto-generate the _transkribus name.
+            convert_page_xml(str(input_path), None)
+            return
+
+        if args.output == "_auto":
+            # auto-generate output filename by appending _transkribus
+            output_file = input_path.parent / f"{input_path.stem}_transkribus{input_path.suffix}"
+            convert_page_xml(str(input_path), str(output_file))
+            return
+
+        # args.output provided as a path
+        out_path = Path(args.output)
+        # If out_path is an existing directory, ensure it exists and create output inside it
+        if out_path.exists() and out_path.is_dir():
+            # directory exists — ensure parents exist (no-op) and place file inside
+            out_path.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Using existing output directory: {out_path}")
+            output_file = out_path / f"{input_path.stem}_transkribus{input_path.suffix}"
+        # If user passed a path that ends with a path separator, treat it as a directory and create it
+        elif args.output.endswith(os.path.sep) or args.output.endswith("/"):
+            out_path.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Created output directory: {out_path}")
+            output_file = out_path / f"{input_path.stem}_transkribus{input_path.suffix}"
+        # If the path doesn't exist and has no suffix (no extension), treat as directory by heuristic
+        elif not out_path.exists() and out_path.suffix == "":
+            out_path.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Created output directory (no-extension heuristic): {out_path}")
+            output_file = out_path / f"{input_path.stem}_transkribus{input_path.suffix}"
         else:
-            print("❌ Error during file conversion")
+            # Treat as file path (may not exist yet)
+            output_file = out_path
+
+        convert_page_xml(str(input_path), str(output_file))
         return
 
-    # If file doesn't exist, try folder
-    if os.path.exists(input_folder):
-        print(f"Converting folder: {input_folder}")
-        process_directory(input_folder, output_folder)
-        print("✅ Folder conversion completed!")
-        return
+    if args.directory:
+        input_dir = Path(args.directory)
+        if not input_dir.exists() or not input_dir.is_dir():
+            print(f"Error: input directory does not exist or is not a directory: {args.directory}")
+            return
 
-    # If neither exists, show instructions
-    print("❌ File or folder does not exist!")
-    print()
-    print("📝 INSTRUCTIONS:")
-    print("1. Find the lines above marked 'input_file' and 'input_folder'")
-    print("2. Change the paths to your actual files/folders")
-    print("3. Run again: python convert_pagexml.py")
-    print()
-    print("💡 Example path: r'C:\\Users\\Name\\Desktop\\my_file.xml'")
+        # Determine output directory
+        if args.output is None:
+            # no -o provided: create default transkribus_converted inside input dir
+            process_directory(str(input_dir), None)
+            return
+
+        if args.output == "_auto":
+            # use default name next to input dir
+            process_directory(str(input_dir), None)
+            return
+
+        # args.output provided as a path
+        out_dir = Path(args.output)
+        # If out_dir looks like a directory (exists or ends with separator), ensure it exists
+        if out_dir.exists() and out_dir.is_dir():
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Using existing output directory: {out_dir}")
+        elif args.output.endswith(os.path.sep) or args.output.endswith("/"):
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Created output directory: {out_dir}")
+        # Heuristic: if path doesn't exist and has no suffix, treat as a directory
+        elif not out_dir.exists() and out_dir.suffix == "":
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if args.verbose:
+                print(f"Created output directory (no-extension heuristic): {out_dir}")
+
+        process_directory(str(input_dir), str(out_dir))
 
 
 # Run conversion when script is executed directly
 if __name__ == "__main__":
-    easy_convert()
+    main()
